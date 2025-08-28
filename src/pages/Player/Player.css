@@ -1,0 +1,553 @@
+.player {
+    min-height: 100vh;
+    background: #000;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.player-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #000;
+    color: white;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid #333;
+    border-top: 3px solid #e50914;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Top Bar */
+.player-top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    padding: 20px 6%;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    transition: opacity 0.3s ease;
+}
+.player-top-bar .open-source-btn {
+    margin-left: auto;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.source-controls {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.source-toggle {
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.source-toggle:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.source-toggle.active {
+    background: #e50914;
+    color: white;
+}
+
+.source-toggle.active:hover {
+    background: rgba(229, 9, 20, 1);
+    transform: scale(1.05);
+}
+
+.player-top-bar.hide {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.player-top-bar.show {
+    opacity: 1;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.back-button:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.back-button img {
+    width: 20px;
+    height: 20px;
+}
+
+.movie-title h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Video Container */
+.video-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    position: relative;
+}
+
+.video-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Bottom Controls */
+.player-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+    padding: 20px 6% 40px;
+    transition: opacity 0.3s ease;
+}
+
+.player-controls.hide {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.player-controls.show {
+    opacity: 1;
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    position: relative;
+    transition: height 0.3s ease;
+}
+
+.progress-container:hover {
+    height: 6px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.progress-filled {
+    height: 100%;
+    background: #e50914;
+    border-radius: 2px;
+    transition: width 0.1s ease;
+    position: relative;
+}
+
+.progress-filled::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: -4px;
+    width: 12px;
+    height: 12px;
+    background: #e50914;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.progress-container:hover .progress-filled::after {
+    opacity: 1;
+}
+
+/* Control Buttons */
+.controls-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.controls-left, .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.control-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+/* Volume Control */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.volume-slider {
+    width: 80px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #e50914;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #e50914;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+}
+
+/* Time Display */
+.time-display {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    font-family: monospace;
+}
+
+/* Quality Selector */
+.quality-select {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+}
+
+.quality-select option {
+    background: #000;
+    color: white;
+}
+
+/* Center Play Button */
+.center-play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    z-index: 15;
+}
+
+.center-play-button:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Keyboard Hints */
+.keyboard-hints {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 30px;
+    backdrop-filter: blur(20px);
+    z-index: 30;
+    animation: fadeInScale 0.3s ease;
+}
+
+.keyboard-hints h3 {
+    margin: 0 0 20px 0;
+    font-size: 20px;
+    color: #e50914;
+    text-align: center;
+}
+
+.hints-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    font-size: 14px;
+}
+
+.hints-grid div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hints-grid strong {
+    background: rgba(229, 9, 20, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 40px;
+    text-align: center;
+    font-family: monospace;
+}
+
+/* Keyboard shortcuts hint - REMOVED */
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .player-top-bar {
+        padding: 15px 4%;
+    }
+    
+    .movie-title h2 {
+        font-size: 18px;
+    }
+    
+    .back-button {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+    
+    .player-controls {
+        padding: 15px 4% 30px;
+    }
+    
+    .controls-main {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .controls-left, .controls-right {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .volume-control {
+        display: none;
+    }
+    
+    .quality-selector {
+        display: none;
+    }
+    
+    .center-play-button {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .center-play-button svg {
+        width: 60px;
+        height: 60px;
+    }
+
+    .keyboard-hints {
+        width: 90%;
+        max-width: 400px;
+        padding: 20px;
+    }
+
+    .hints-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+/* Fullscreen styles */
+.player:fullscreen .video-container {
+    height: 100vh;
+}
+
+.player:fullscreen .player-controls {
+    padding-bottom: 60px;
+}
+
+/* Animation for controls */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+    from { 
+        opacity: 0; 
+        transform: translate(-50%, -50%) scale(0.8); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translate(-50%, -50%) scale(1); 
+    }
+}
+
+.player-controls.show {
+    animation: fadeIn 0.3s ease;
+}
+
+.keyboard-shortcuts {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 14px;
+    z-index: 1000;
+    display: none;
+}
+
+.player-controls-right {
+    margin-left: auto;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.episode-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.episode-dropdown {
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 120px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.episode-dropdown option {
+    background: #1a1a1a;
+    color: white;
+}
+
+.episode-dropdown:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.movie-details-btn,
+.home-btn {
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.movie-details-btn:hover,
+.home-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.home-btn {
+    background: rgba(229, 9, 20, 0.8);
+}
+
+.home-btn:hover {
+    background: rgba(229, 9, 20, 1);
+    transform: scale(1.05);
+}
+
+.source-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
