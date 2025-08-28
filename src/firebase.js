@@ -8,12 +8,12 @@ import { toast } from "react-toastify";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBM0oxHuOUhjNcuIqJtyS6sz7vPDzW1bDU",
-  authDomain: "petflix-b7e10.firebaseapp.com",
-  projectId: "petflix-b7e10",
-  storageBucket: "petflix-b7e10.firebasestorage.app",
-  messagingSenderId: "534529916099",
-  appId: "1:534529916099:web:0eb92a8dbae7d999edf676"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBM0oxHuOUhjNcuIqJtyS6sz7vPDzW1bDU",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "petflix-b7e10.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "petflix-b7e10",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "petflix-b7e10.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "534529916099",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:534529916099:web:0eb92a8dbae7d999edf676"
 };
 
 // Initialize Firebase
