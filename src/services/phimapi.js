@@ -109,14 +109,12 @@ export async function fetchMoviesByCategory(category, page = 1, limit = 20) {
     params.set('sort_type', 'desc');
     
     const url = `${PHIMAPI_BASE}/v1/api/danh-sach/${category}?${params.toString()}`;
-    console.log('Trying V1 API:', url);
     
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`PhimAPI V1 failed: ${response.status}`);
     }
     const data = await response.json();
-    console.log('V1 API success:', data);
     setCachedData(cacheKey, data);
     return data;
   } catch (error) {
@@ -125,7 +123,6 @@ export async function fetchMoviesByCategory(category, page = 1, limit = 20) {
     // Fallback: Try latest movies API with filtering
     try {
       const fallbackData = await fetchLatestMoviesV3(page);
-      console.log('Fallback API success:', fallbackData);
       setCachedData(cacheKey, fallbackData);
       return fallbackData;
     } catch (fallbackError) {

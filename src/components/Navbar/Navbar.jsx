@@ -1,20 +1,45 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './Navbar.css'
 import logo from '../../assets/Plogo.png'
 import search_icon from '../../assets/search_icon.svg'
 import bell_icon from '../../assets/bell_icon.svg'
 import profile_img from '../../assets/profile_img.png'
 import caret_icon from '../../assets/caret_icon.svg'
-import { logout } from '../../firebase'
+import { logout, getUserData, auth } from '../../firebase'
 import { useNavigate } from 'react-router-dom'
+import { onAuthStateChanged } from 'firebase/auth'
 
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const [userName, setUserName] = useState('');
   
   const handleHomeClick = () => {
     navigate('/');
   };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userData = await getUserData(user.uid);
+          if (userData && userData.name) {
+            setUserName(userData.name);
+          } else {
+            // Fallback to email if name is not available
+            setUserName(user.email?.split('@')[0] || 'User');
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setUserName(user.email?.split('@')[0] || 'User');
+        }
+      } else {
+        setUserName('');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className='navbar'>
@@ -35,8 +60,8 @@ const Navbar = () => {
         </ul>
       </div>
       <div className='navbar-right'>
-        <img src={search_icon} alt=""className='icons' onClick={() => navigate('/search')} />
-        <p>Children</p>
+        <img src={search_icon} alt=""className='icons'  />
+        <p>{userName || 'User'}</p>
         <img src={bell_icon} alt="" className='icons' />
         <div className="navbar-profile">
           <img src={profile_img} alt="" className='profile' />

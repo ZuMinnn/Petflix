@@ -18,10 +18,8 @@ const App = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log("Logged in");
         navigate('/');
       } else {
-        console.log("Logged Out");
         navigate('/login');
       }
     });

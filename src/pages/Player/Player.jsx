@@ -4,6 +4,7 @@ import './Player.css'
 import back_arrow from '../../assets/back_arrow_icon.png'
 import { buildEmbedUrl } from '../../utils/embed'
 import MovieDetailsPanel from '../../components/MovieDetailsPanel/MovieDetailsPanel'
+import SafeIframe from '../../components/SafeIframe/SafeIframe'
 import { fetchMovieDetailBySlug } from '../../services/phimapi'
 import { auth, saveWatchProgress } from '../../firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
@@ -30,17 +31,11 @@ const Player = () => {
     const movieSlug = location.state?.movieSlug;
     const episodeSlug = location.state?.episodeSlug || location.state?.title || location.state?.link_m3u8 || location.state?.link_embed;
     
-    console.log('Player location.state:', location.state);
-    console.log('movieSlug:', movieSlug);
-    console.log('episodeSlug:', episodeSlug);
-    
     if (!movieSlug || !episodeSlug) {
-      console.log('Missing movieSlug or episodeSlug, cannot track progress');
       return null;
     }
     
     const key = `watchProgress:${movieSlug}:${episodeSlug}`;
-    console.log('Generated progress key:', key);
     return key;
   }, [location.state?.movieSlug, location.state?.episodeSlug, location.state?.title, location.state?.link_m3u8, location.state?.link_embed]);
   
@@ -84,8 +79,6 @@ const Player = () => {
   // Lấy danh sách tập từ location.state
   useEffect(() => {
     if (location.state?.episodes) {
-      console.log('Episodes data:', location.state.episodes);
-      
       // Flatten episodes từ cấu trúc server_data
       const flattenedEpisodes = [];
       location.state.episodes.forEach(server => {
@@ -99,8 +92,6 @@ const Player = () => {
         }
       });
       
-      console.log('Flattened episodes:', flattenedEpisodes);
-      console.log('Current episodeSlug:', location.state?.episodeSlug);
       setEpisodes(flattenedEpisodes);
       
       // Tìm tập hiện tại dựa trên episodeSlug
@@ -109,7 +100,6 @@ const Player = () => {
         ep.title === location.state?.episodeSlug ||
         ep.name === location.state?.episodeSlug
       );
-      console.log('Found current episode:', current);
       setCurrentEpisode(current);
     }
   }, [location.state?.episodes, location.state?.episodeSlug]);
@@ -226,7 +216,6 @@ const Player = () => {
         };
         
         saveWatchProgress(user.uid, movieSlug, episodeSlug, payload);
-        console.log('🔥 Saved embed movie info to Firebase:', movieSlug, payload);
       }
       return;
     }
@@ -251,7 +240,6 @@ const Player = () => {
         
         // Save to Firebase instead of localStorage
         saveWatchProgress(user.uid, movieSlug, episodeSlug, payload);
-        console.log('🔥 Progress saved to Firebase:', movieSlug, payload);
       } catch (e) {
         console.error('❌ Error saving progress:', e);
       }
@@ -329,7 +317,7 @@ const Player = () => {
         episodes: location.state?.episodes // Đảm bảo episodes được truyền tiếp
       };
       
-      console.log('Episode change - new episodeSlug:', newState.episodeSlug);
+
       
       // Điều hướng với state mới
       navigate('/watch', { state: newState, replace: true });
@@ -383,14 +371,13 @@ const Player = () => {
                     ep.title === currentEpisode?.title ||
                     ep.name === currentEpisode?.name
                   );
-                  console.log('Current episode index:', currentIndex, 'episodeSlug:', location.state?.episodeSlug);
+
                   return currentIndex >= 0 ? currentIndex : 0;
                 })()}
                 onChange={(e) => {
                   const selectedIndex = parseInt(e.target.value);
                   const selected = episodes[selectedIndex];
                   if (selected) {
-                    console.log('Selecting episode:', selected);
                     handleEpisodeChange(selected);
                   }
                 }}
@@ -445,13 +432,21 @@ const Player = () => {
             playsInline
           />
         ) : location.state?.link_embed ? (
-          <iframe
+          <SafeIframe
             src={location.state?.link_embed}
             title={title || 'Movie Player'}
-            frameBorder="0"
-            allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          ></iframe>
+            onError={() => {
+              console.warn('Embed iframe failed, falling back to HLS if available')
+              if (location.state?.link_m3u8) {
+                setUseHLS(true)
+              }
+            }}
+            fallback={
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%',height:'100%',color:'#bbb'}}>
+                Không thể tải video embed. {location.state?.link_m3u8 ? 'Đang chuyển sang HLS...' : 'Vui lòng thử lại.'}
+              </div>
+            }
+          />
         ) : (
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%',height:'100%',color:'#bbb'}}>Không có nguồn phát. Vui lòng quay lại và chọn tập khác.</div>
         )}

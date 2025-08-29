@@ -219,7 +219,7 @@
 }
 
 .search-strategies {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
   max-width: 600px;

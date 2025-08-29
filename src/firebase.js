@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { addDoc, getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot } from "firebase/firestore";
+import { addDoc, getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, where } from "firebase/firestore";
 import { toast } from "react-toastify";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -26,7 +26,6 @@ const signup = async (name, email, password) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    console.log("User signed up:", user);
     await addDoc(collection(db, "users"), {
       uid: user.uid,
       name,
@@ -43,7 +42,6 @@ const login = async (email, password) => {
     try {
         await signInWithEmailAndPassword(auth,email,password);
     } catch (error) {
-        console.log(error);
         toast.error(error.code.split('/')[1].split('-').join(" ") );
     }
 }
@@ -53,6 +51,25 @@ const logout =  () => {
          signOut(auth);
     } catch (error) {
         console.error("Error logging out:", error);
+    }
+};
+
+// Get user data from Firestore
+const getUserData = async (uid) => {
+    try {
+        if (!uid) return null;
+        
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("uid", "==", uid));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs[0].data();
+        }
+        return null;
+    } catch (error) {
+        console.error("Error getting user data:", error);
+        return null;
     }
 };
 
@@ -76,7 +93,6 @@ const saveWatchProgress = async (userId, movieSlug, episodeSlug, progressData) =
         };
 
         await setDoc(docRef, payload, { merge: true });
-        console.log('✅ Watch progress saved to Firebase:', movieSlug, payload);
     } catch (error) {
         console.error('❌ Error saving watch progress:', error);
     }
@@ -100,9 +116,8 @@ const getUserWatchHistory = async (userId) => {
                 id: doc.id,
                 ...doc.data()
             });
-        });
-
-        console.log(`📚 Loaded ${history.length} watch history items from Firebase`);
+                });
+        
         return history;
     } catch (error) {
         console.error('❌ Error loading watch history:', error);
@@ -130,7 +145,6 @@ const subscribeToWatchHistory = (userId, callback) => {
                 });
             });
             
-            console.log(`🔄 Real-time update: ${history.length} items`);
             callback(history);
         });
     } catch (error) {
@@ -149,7 +163,6 @@ const deleteFromWatchHistory = async (userId, movieSlug) => {
 
         const docRef = doc(db, 'users', userId, 'watchHistory', movieSlug);
         await deleteDoc(docRef);
-        console.log('🗑️ Deleted from watch history:', movieSlug);
     } catch (error) {
         console.error('❌ Error deleting from watch history:', error);
     }
@@ -172,7 +185,6 @@ const clearAllWatchHistory = async (userId) => {
         });
 
         await Promise.all(deletePromises);
-        console.log('🧹 Cleared all watch history for user:', userId);
     } catch (error) {
         console.error('❌ Error clearing watch history:', error);
     }
@@ -184,6 +196,7 @@ export {
     signup, 
     login, 
     logout,
+    getUserData,
     saveWatchProgress,
     getUserWatchHistory,
     subscribeToWatchHistory,

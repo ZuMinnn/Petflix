@@ -24,11 +24,6 @@ const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
   const handlePlayNow = () => {
     if (!firstPlayable) return
     
-    console.log('MovieDetailsPanel - handlePlayNow')
-    console.log('movie:', movie)
-    console.log('firstPlayable:', firstPlayable)
-    console.log('detail:', detail)
-    
     const state = { 
       title, 
       link_embed: firstPlayable.link_embed, 
@@ -38,8 +33,6 @@ const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
       episodes: detail?.episodes || [],
       returnPath: window.location.pathname
     }
-    
-    console.log('Navigation state:', state)
     
     try { window.__lastEp = firstPlayable; window.__lastWatchState = state } catch (_) {}
     navigate('/watch', { state })

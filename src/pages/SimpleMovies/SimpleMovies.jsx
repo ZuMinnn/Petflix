@@ -38,12 +38,9 @@ const SimpleMovies = () => {
   
   // Advanced search with multiple strategies
   const searchMultiplePages = async (searchKeyword, maxPages = 30) => {
-    console.log(`Starting comprehensive search for: "${searchKeyword}"`)
-    
     const allMovies = []
     
     // Strategy 1: Direct keyword search across multiple pages
-    console.log('Strategy 1: Direct keyword search')
     const directSearchPromises = []
     for (let page = 1; page <= maxPages; page++) {
       directSearchPromises.push(
@@ -60,7 +57,6 @@ const SimpleMovies = () => {
     const directResults = await Promise.allSettled(directSearchPromises)
     directResults.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value?.items) {
-        console.log(`Direct search page ${index + 1}: Found ${result.value.items.length} movies`)
         allMovies.push(...result.value.items)
       }
     })
@@ -68,8 +64,6 @@ const SimpleMovies = () => {
     // Strategy 2: Split keyword and search each word
     const words = searchKeyword.trim().split(/\s+/).filter(word => word.length > 2)
     if (words.length > 1) {
-      console.log(`Strategy 2: Searching individual words: ${words.join(', ')}`)
-      
       for (const word of words) {
         const wordSearchPromises = []
         for (let page = 1; page <= Math.min(10, maxPages); page++) {
@@ -87,7 +81,6 @@ const SimpleMovies = () => {
         const wordResults = await Promise.allSettled(wordSearchPromises)
         wordResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value?.items) {
-            console.log(`Word "${word}" page ${index + 1}: Found ${result.value.items.length} movies`)
             allMovies.push(...result.value.items)
           }
         })
@@ -111,11 +104,9 @@ const SimpleMovies = () => {
       'tội phạm': ['crime', 'criminal', 'toi pham']
     }
     
-    const alternatives = vietnameseAlternatives[searchKeyword.toLowerCase()] || []
-    if (alternatives.length > 0) {
-      console.log(`Strategy 3: Searching alternatives: ${alternatives.join(', ')}`)
-      
-      for (const alt of alternatives) {
+          const alternatives = vietnameseAlternatives[searchKeyword.toLowerCase()] || []
+      if (alternatives.length > 0) {
+        for (const alt of alternatives) {
         const altSearchPromises = []
         for (let page = 1; page <= Math.min(5, maxPages); page++) {
           altSearchPromises.push(
@@ -132,18 +123,14 @@ const SimpleMovies = () => {
         const altResults = await Promise.allSettled(altSearchPromises)
         altResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value?.items) {
-            console.log(`Alternative "${alt}" page ${index + 1}: Found ${result.value.items.length} movies`)
             allMovies.push(...result.value.items)
           }
         })
       }
     }
     
-    console.log(`Total search results from all strategies: ${allMovies.length} movies`)
-    
     // Strategy 4: If no results, search in latest movies and filter locally
     if (allMovies.length === 0) {
-      console.log('Strategy 4: No API results, searching in latest movies locally')
       
       try {
         // Get latest movies from multiple pages
@@ -159,7 +146,6 @@ const SimpleMovies = () => {
         
         latestResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value?.items) {
-            console.log(`Latest movies page ${index + 1}: Found ${result.value.items.length} movies`)
             latestMovies.push(...result.value.items)
           }
         })
@@ -180,7 +166,6 @@ const SimpleMovies = () => {
           )
         })
         
-        console.log(`Local search found: ${localMatches.length} movies`)
         allMovies.push(...localMatches)
         
       } catch (error) {
@@ -193,18 +178,11 @@ const SimpleMovies = () => {
       index === self.findIndex(m => m.slug === movie.slug)
     )
     
-    console.log(`After deduplication: ${uniqueMovies.length} unique movies`)
-    
     // Filter and rank by relevance
     const rankedMovies = uniqueMovies.map(movie => ({
       ...movie,
       relevanceScore: calculateRelevance(movie, searchKeyword, words, alternatives)
     })).sort((a, b) => b.relevanceScore - a.relevanceScore)
-    
-    console.log(`Top 10 results by relevance:`)
-    rankedMovies.slice(0, 10).forEach((movie, index) => {
-      console.log(`${index + 1}. ${movie.name || movie.origin_name} (Score: ${movie.relevanceScore})`)
-    })
     
     return rankedMovies
   }
@@ -256,7 +234,6 @@ const SimpleMovies = () => {
         
         // Check if we already have search results
         if (allSearchResults.length === 0 || allSearchResults[0]?.searchKeyword !== searchKeyword.trim()) {
-          console.log(`New search: "${searchKeyword}"`)
           // Perform comprehensive search across multiple pages
           const searchResults = await searchMultiplePages(searchKeyword.trim())
           
@@ -280,7 +257,6 @@ const SimpleMovies = () => {
           movieList = resultsWithMetadata.slice(startIndex, endIndex)
           
         } else {
-          console.log(`Using cached search results for: "${searchKeyword}"`)
           // Use cached search results
           const startIndex = (pageNum - 1) * itemsPerPage
           const endIndex = startIndex + itemsPerPage
@@ -296,13 +272,8 @@ const SimpleMovies = () => {
         setIsSearchMode(false)
         setAllSearchResults([]) // Clear search results
         
-        console.log(`Loading all movies, page: ${pageNum}`)
         // Fetch data from latest movies API (all movies)
         const data = await fetchLatestMoviesV3(pageNum)
-        
-        console.log('Full API Response:', data)
-        console.log('Data structure keys:', Object.keys(data || {}))
-        console.log('Items/Data arrays:', data?.items, data?.data)
         
         // Extract movies and pagination info
         movieList = Array.isArray(data?.items || data?.data) ? (data.items || data.data) : []
@@ -317,8 +288,6 @@ const SimpleMovies = () => {
           setTotalItems(movieList.length)
         }
       }
-      
-      console.log(`Processing ${movieList.length} movies for page ${pageNum}`)
       
       // Enrich with TMDB data
       const enrichedMovies = await Promise.all(movieList.map(async (movie) => {
@@ -497,7 +466,7 @@ const SimpleMovies = () => {
               </button>
             )}
             <button className='search-btn' onClick={handleSearch}>
-              🔍 Tìm kiếm
+               Tìm kiếm
             </button>
           </div>
           
@@ -520,8 +489,8 @@ const SimpleMovies = () => {
             {isSearchMode && keyword ? (
               <div className='search-loading'>
                 <div className='loading-spinner'></div>
-                <p>Đang tìm kiếm "{keyword}" trong toàn bộ database...</p>
-                <p className='loading-subtitle'>Đang sử dụng 4 chiến lược tìm kiếm khác nhau...</p>
+                <p>Đang tìm kiếm "{keyword}"  toàn bộ ..</p>
+                <p className='loading-subtitle'>Đang Tìm kiếm...</p>
                 <div className='search-strategies'>
                   <div>✓ Tìm kiếm trực tiếp</div>
                   <div>✓ Tìm từng từ riêng lẻ</div>

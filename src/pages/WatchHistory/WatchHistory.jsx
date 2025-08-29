@@ -28,7 +28,6 @@ const WatchHistory = () => {
 
     // Setup real-time subscription
     const unsubscribe = subscribeToWatchHistory(user.uid, (history) => {
-      console.log('🔄 Real-time update received:', history)
       setWatchHistory(history)
     })
 
@@ -42,15 +41,11 @@ const WatchHistory = () => {
       setLoading(true)
       
       if (!user) {
-        console.log('No user logged in')
         setWatchHistory([])
         return
       }
-
-      console.log('🔥 Loading watch history from Firebase for user:', user.uid)
       
       const history = await getUserWatchHistory(user.uid)
-      console.log('📚 Firebase watch history:', history)
       
       setWatchHistory(history)
     } catch (error) {
@@ -144,31 +139,19 @@ const WatchHistory = () => {
 
   // Debug Firebase + localStorage
   const debugLocalStorage = async () => {
-    console.log('=== DEBUG WATCH HISTORY ===')
-    console.log('User:', user?.uid)
-    
     // Debug localStorage (old system)
-    console.log('--- LOCALSTORAGE (OLD) ---')
-    console.log('Total localStorage items:', localStorage.length)
-    
     const progressKeys = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (key && key.startsWith('watchProgress:')) {
         progressKeys.push(key)
-        const data = localStorage.getItem(key)
-        console.log(`${key}:`, data)
       }
     }
-    console.log(`Found ${progressKeys.length} localStorage progress entries`)
     
     // Debug Firebase (new system)
-    console.log('--- FIREBASE (NEW) ---')
     if (user) {
       try {
         const firebaseHistory = await getUserWatchHistory(user.uid)
-        console.log('Firebase history:', firebaseHistory)
-        console.log(`Found ${firebaseHistory.length} Firebase progress entries`)
         
         alert(`
 LocalStorage (old): ${progressKeys.length} entries
@@ -253,7 +236,6 @@ Xem console để biết chi tiết.`)
     
     try {
       await saveWatchProgress(user.uid, movieSlug, episodeSlug, testData)
-      console.log('🔥 Manually saved test progress to Firebase:', movieSlug, testData)
       alert('🔥 Đã lưu test progress lên Firebase! Click "Làm mới" để xem.')
       loadWatchHistory()
     } catch (error) {
