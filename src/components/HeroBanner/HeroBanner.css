@@ -1,0 +1,337 @@
+.hero-banner {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 400px;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.hero-video, .hero-image {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+.hero-video {
+    position: relative;
+    width: 100%;
+    z-index: 2;
+}
+
+.hero-image {
+    position: relative;
+    width: 100%;
+    z-index: 2;
+    mask-image: linear-gradient(to right, transparent, black 75%);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 75%);
+}
+
+.hero-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.6) 30%,
+        rgba(0, 0, 0, 0.4) 60%,
+        transparent 100%
+    );
+    z-index: 3;
+}
+
+.hero-caption {
+    position: absolute;
+    left: 6%;
+    bottom: 0;
+    width: 100%;
+    z-index: 4;
+    color: white;
+    padding-bottom: 50px;
+}
+
+.caption-img {
+    width: 90%;
+    max-width: 420px;
+    margin-bottom: 30px;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.hero-caption p {
+    max-width: 700px;
+    font-size: 17px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.hero-btns {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 50px;
+}
+
+.hero-btns .btn {
+    border: 0;
+    outline: 0;
+    padding: 8px 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.hero-btns .btn img {
+    width: 25px;
+}
+
+.hero-btns .btn.dark-btn {
+    color: #fff;
+    background: rgba(109, 109, 110, 0.7);
+}
+
+.hero-btns .btn:hover {
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.hero-btns .btn.dark-btn:hover {
+    background: rgba(109, 109, 110, 0.4);
+}
+
+/* TitleCards trong hero banner */
+.hero-title-cards {
+    margin-top: 20px;
+}
+
+.hero-title-cards .title-cards {
+    margin: 0;
+}
+
+.hero-title-cards .title-cards h2 {
+    color: white;
+    font-size: 18px;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    position: relative;
+}
+
+/* Auto-scroll indicator */
+.hero-title-cards .title-cards h2::after {
+    content: "●";
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #00ff00;
+    font-size: 12px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+
+.hero-title-cards .title-cards .cards-container {
+    margin: 0;
+}
+
+/* Auto scroll styling cho mượt mà */
+.hero-title-cards .card-list {
+    scroll-behavior: auto;
+    transition: all 0.1s ease-out;
+}
+
+.hero-title-cards .card-list:hover {
+    scroll-behavior: smooth;
+}
+
+/* Ẩn scrollbar nhưng vẫn có thể scroll */
+.hero-title-cards .card-list {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.hero-title-cards .card-list::-webkit-scrollbar {
+    display: none;
+}
+
+/* Video controls container */
+.video-controls {
+    /* width: 150%; */
+    position: absolute;
+    bottom: 260px;
+    right: 20px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Age rating badge */
+.age-rating {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 2px;
+    backdrop-filter: blur(10px);
+}
+
+/* Volume control button */
+.volume-control {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.volume-control:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: scale(1.1);
+}
+
+
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .hero-banner {
+        min-height: 350px;
+    }
+    
+    .hero-caption {
+        padding-bottom: 30px;
+    }
+    
+    .hero-btns {
+        margin-bottom: 30px;
+    }
+    
+    .hero-title-cards {
+        display: none;
+    }
+    
+    /* Video controls trên tablet */
+    .video-controls {
+        bottom: 45px;
+        right: 15px;
+        gap: 8px;
+    }
+    
+    .age-rating {
+        font-size: 10px;
+        padding: 2px 5px;
+    }
+    
+    .volume-control {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 800px) {
+    .hero-banner {
+        min-height: 300px;
+    }
+    
+    .hero-caption {
+        left: 4%;
+        padding-bottom: 20px;
+    }
+    
+    .caption-img {
+        margin-bottom: 10px;
+        width: 40%;
+    }
+    
+    .hero-caption p {
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+    
+    .hero-btns .btn {
+        padding: 6px 16px;
+        font-size: 14px;
+    }
+    
+    .hero-btns .btn img {
+        width: 20px;
+    }
+}
+
+@media (max-width: 500px) {
+    .hero-banner {
+        min-height: 250px;
+    }
+    
+    .hero-caption {
+        padding-bottom: 15px;
+    }
+    
+    .caption-img {
+        width: 70%;
+        margin-bottom: 8px;
+    }
+    
+    .hero-caption p {
+        font-size: 11px;
+        margin-bottom: 10px;
+    }
+    
+    .hero-btns {
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .hero-btns .btn {
+        padding: 4px 10px;
+        font-size: 10px;
+        gap: 5px;
+    }
+    
+    .hero-btns .btn img {
+        width: 15px;
+    }
+    
+    /* Video controls trên mobile */
+    .video-controls {
+        bottom: 35px;
+        right: 10px;
+        gap: 6px;
+    }
+    
+    .age-rating {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+    
+    .volume-control {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+}
