@@ -65,6 +65,9 @@
 
 .card-list img {
     width: 240px;
+    height: 135px; /* Cố định chiều cao theo tỷ lệ 16:9 */
+    object-fit: cover; /* Cắt hình để phù hợp tỷ lệ */
+    object-position: center; /* Căn giữa hình khi cắt */
     border-radius: 4px;
     cursor: pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -73,7 +76,10 @@
 .card-list .card {
     position: relative;
     transition: transform 0.3s ease;
-    cursor: pointer; /* Thêm cursor pointer */
+    cursor: pointer;
+    flex-shrink: 0; /* Ngăn card bị co lại */
+    width: 240px; /* Cố định chiều rộng */
+    height: 135px; /* Cố định chiều cao */
 }
 
 .card-overlay {
