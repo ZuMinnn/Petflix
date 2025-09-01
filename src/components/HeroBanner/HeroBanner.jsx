@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './HeroBanner.css'
-import kms_title from '../../assets/kms_title.png'
+import kms_title from '../../assets/AcocBanner.png'
 import play_icon from '../../assets/play_icon.png'
 import play_info from '../../assets/info_icon.png'
 import kms from '../../assets/kms.png' // Fallback image
 import TitleCards from '../TitleCards/TitleCards'
-import trailerVideo from '../../assets/trailer.mp4'
+import trailerVideo from '../../assets/4ktrailer.mp4'
+
 
 const HeroBanner = ({ 
   trailerUrl = null // Có thể truyền URL trailer từ bên ngoài
@@ -166,8 +167,8 @@ const HeroBanner = ({
       {/* Caption content */}
       <div className="hero-caption">
         <img src={kms_title} alt="Movie Title" className="caption-img" />
-        <p>His family is massacred and his sister is cursed after a demon attack. 
-          Tanjiro embarks on a dangerous journey to bring her back to human form and take revenge.</p>
+        <p>Two children who got swapped at birth grow up to become engaged to each other. 
+          It's an arrangement neither of them like, at first.</p>
         <div className="hero-btns">
           <button className='btn'>
             <img src={play_icon} alt="" />
