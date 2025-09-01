@@ -55,7 +55,7 @@ const Navbar = () => {
             <li onClick={() => navigate('/simple-movies?page=1')} style={{ cursor: 'pointer' }}>TV Shows</li>
             <li onClick={() => navigate('/simple-movies?page=1')} style={{ cursor: 'pointer' }}>Movies</li>
             <li onClick={() => navigate('/movies')} style={{ cursor: 'pointer' }}>New & Popular</li>
-            <li>My List</li>
+            <li onClick={() => navigate('/anime-list?page=1')} style={{ cursor: 'pointer' }}>Anime</li>
             <li>Browser By Language</li>
         </ul>
       </div>

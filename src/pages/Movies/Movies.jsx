@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import './Movies.css'
 import Navbar from '../../components/Navbar/Navbar'
 import Footer from '../../components/Footer/Footer'
-import { fetchLatestMoviesV3, fetchMovieDetailBySlug } from '../../services/phimapi'
+import { fetchLatestMoviesV3, fetchMovieDetailBySlug, buildPhimApiImageUrl } from '../../services/phimapi'
 import { fetchTmdbById, buildTmdbImagePath } from '../../services/tmdb'
 import MovieDetailsPanel from '../../components/MovieDetailsPanel/MovieDetailsPanel'
 
@@ -34,15 +34,15 @@ const Movies = () => {
             return {
               ...it,
               _tmdb: tmdb,
-              _poster: buildTmdbImagePath(tmdb?.poster_path, 'w342') || it?.poster_url || '',
-              _backdrop: buildTmdbImagePath(tmdb?.backdrop_path, 'w780') || it?.thumb_url || '',
+              _poster: buildTmdbImagePath(tmdb?.poster_path, 'w342') || buildPhimApiImageUrl(it?.poster_url) || '',
+              _backdrop: buildTmdbImagePath(tmdb?.backdrop_path, 'w780') || buildPhimApiImageUrl(it?.thumb_url) || '',
             }
           }
           return {
             ...it,
             _tmdb: null,
-            _poster: it?.poster_url || '',
-            _backdrop: it?.thumb_url || '',
+            _poster: buildPhimApiImageUrl(it?.poster_url) || '',
+            _backdrop: buildPhimApiImageUrl(it?.thumb_url) || '',
           }
         }))
 

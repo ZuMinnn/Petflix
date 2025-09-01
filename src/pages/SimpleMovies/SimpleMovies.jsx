@@ -4,7 +4,7 @@ import './SimpleMovies.css'
 import Navbar from '../../components/Navbar/Navbar'
 import Footer from '../../components/Footer/Footer'
 import MovieDetailsPanel from '../../components/MovieDetailsPanel/MovieDetailsPanel'
-import { fetchLatestMoviesV3, fetchMovieDetailBySlug, searchMovies } from '../../services/phimapi'
+import { fetchLatestMoviesV3, fetchMovieDetailBySlug, searchMovies, buildPhimApiImageUrl } from '../../services/phimapi'
 import { fetchTmdbById, buildTmdbImagePath } from '../../services/tmdb'
 
 const SimpleMovies = () => {
@@ -300,16 +300,16 @@ const SimpleMovies = () => {
             return {
               ...movie,
               _tmdb: tmdb,
-              _poster: buildTmdbImagePath(tmdb?.poster_path, 'w342') || movie?.poster_url || movie?.thumb_url || '',
-              _backdrop: buildTmdbImagePath(tmdb?.backdrop_path, 'w780') || movie?.thumb_url || movie?.poster_url || '',
+              _poster: buildTmdbImagePath(tmdb?.poster_path, 'w342') || buildPhimApiImageUrl(movie?.poster_url) || buildPhimApiImageUrl(movie?.thumb_url) || '',
+              _backdrop: buildTmdbImagePath(tmdb?.backdrop_path, 'w780') || buildPhimApiImageUrl(movie?.thumb_url) || buildPhimApiImageUrl(movie?.poster_url) || '',
             }
           } else {
             // No TMDB, use original data
             return {
               ...movie,
               _tmdb: null,
-              _poster: movie?.poster_url || movie?.thumb_url || '',
-              _backdrop: movie?.thumb_url || movie?.poster_url || '',
+              _poster: buildPhimApiImageUrl(movie?.poster_url) || buildPhimApiImageUrl(movie?.thumb_url) || '',
+              _backdrop: buildPhimApiImageUrl(movie?.thumb_url) || buildPhimApiImageUrl(movie?.poster_url) || '',
             }
           }
         } catch (e) {
@@ -317,8 +317,8 @@ const SimpleMovies = () => {
           return {
             ...movie,
             _tmdb: null,
-            _poster: movie?.poster_url || movie?.thumb_url || '',
-            _backdrop: movie?.thumb_url || movie?.poster_url || '',
+            _poster: buildPhimApiImageUrl(movie?.poster_url) || buildPhimApiImageUrl(movie?.thumb_url) || '',
+            _backdrop: buildPhimApiImageUrl(movie?.thumb_url) || buildPhimApiImageUrl(movie?.poster_url) || '',
           }
         }
       }))

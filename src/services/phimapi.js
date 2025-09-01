@@ -1,4 +1,5 @@
 const PHIMAPI_BASE = 'https://phimapi.com';
+const PHIMAPI_CDN = 'https://phimimg.com';
 
 // Cache với expiry time
 const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
@@ -19,6 +20,16 @@ const setCachedData = (key, data) => {
     timestamp: Date.now()
   });
 };
+
+// Helper function to build full PhimAPI image URL
+export function buildPhimApiImageUrl(relativePath) {
+  if (!relativePath) return '';
+  if (relativePath.startsWith('http')) return relativePath; // Already full URL
+  
+  // Ensure path starts with /
+  const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  return `${PHIMAPI_CDN}${cleanPath}`;
+}
 
 export async function fetchLatestMoviesV3(page = 1) {
   const cacheKey = `latest_v3_${page}`;
