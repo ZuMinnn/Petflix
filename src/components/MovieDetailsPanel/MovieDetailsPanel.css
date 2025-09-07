@@ -21,7 +21,48 @@
 .mdp-episode-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .mdp-episode { display: flex; gap: 12px; padding: 10px; background: #1a1a1a; border-radius: 8px; cursor: pointer; transition: transform .15s ease, background .15s ease; }
 .mdp-episode:hover { transform: translateY(-2px); background: #202020; }
-.mdp-episode-thumb { width: 160px; height: 90px; background: #222; border-radius: 4px; flex-shrink: 0; position: relative; overflow: hidden; }
+.mdp-episode-thumb { 
+  width: 160px; 
+  height: 90px; 
+  background: #222; 
+  border-radius: 4px; 
+  flex-shrink: 0; 
+  position: relative; 
+  overflow: hidden;
+}
+
+.mdp-episode-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 100%);
+  transition: background 0.3s ease;
+}
+
+.mdp-episode:hover .mdp-episode-overlay {
+  background: linear-gradient(135deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
+}
+
+.mdp-play-icon {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 20px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+  z-index: 2;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.mdp-episode:hover .mdp-play-icon {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.1);
+}
 .mdp-progress { position: absolute; left: 0; bottom: 0; height: 4px; background: #e50914; }
 .mdp-episode-meta { min-width: 0; }
 .mdp-episode-title { font-size: 15px; color: #fff; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

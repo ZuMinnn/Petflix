@@ -26,7 +26,7 @@ const AnimeList = () => {
   const [selectedMovie, setSelectedMovie] = useState(null)
   const [movieDetail, setMovieDetail] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [detailLoading, setDetailLoading] = useState(false)
+  const [, setDetailLoading] = useState(false)
   
   // Search states
   const [searchKeyword, setSearchKeyword] = useState(keyword)
@@ -147,7 +147,7 @@ const AnimeList = () => {
           allMovies.push(...filteredAnime)
         }
       })
-    } catch (e) {
+    } catch {
       // Silent fail for hoat-hinh search
     }
     
@@ -166,7 +166,7 @@ const AnimeList = () => {
     }
     
     const directResults = await Promise.allSettled(directSearchPromises)
-    directResults.forEach((result, index) => {
+    directResults.forEach((result) => {
       if (result.status === 'fulfilled' && result.value?.items) {
         // Filter only anime movies
         const animeMovies = result.value.items.filter(isAnime)
@@ -192,7 +192,7 @@ const AnimeList = () => {
         }
         
         const wordResults = await Promise.allSettled(wordSearchPromises)
-        wordResults.forEach((result, index) => {
+        wordResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value?.items) {
             // Filter only anime movies
             const animeMovies = result.value.items.filter(isAnime)
@@ -235,7 +235,7 @@ const AnimeList = () => {
         }
         
         const altResults = await Promise.allSettled(altSearchPromises)
-        altResults.forEach((result, index) => {
+        altResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value?.items) {
             // Filter only anime movies
             const animeMovies = result.value.items.filter(isAnime)
@@ -259,7 +259,7 @@ const AnimeList = () => {
         const latestResults = await Promise.allSettled(latestMoviesPromises)
         const latestMovies = []
         
-        latestResults.forEach((result, index) => {
+        latestResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value?.items) {
             // Filter only anime movies first
             const animeMovies = result.value.items.filter(isAnime)
@@ -285,7 +285,7 @@ const AnimeList = () => {
         
         allMovies.push(...localMatches)
         
-      } catch (error) {
+      } catch {
         // Silent fail for strategy 4
       }
     }
@@ -406,7 +406,7 @@ const AnimeList = () => {
                   _backdrop: getBestAnimeImage(anime, null, 'backdrop'),
                 }
               }
-            } catch (e) {
+            } catch {
               return {
                 ...anime,
                 _tmdb: null,
@@ -458,7 +458,7 @@ const AnimeList = () => {
                   _backdrop: getBestAnimeImage(anime, null, 'backdrop'),
                 }
               }
-            } catch (e) {
+            } catch {
               return {
                 ...anime,
                 _tmdb: null,
@@ -492,7 +492,7 @@ const AnimeList = () => {
             } else {
               throw new Error(`API response not ok: ${response.status}`)
             }
-          } catch (apiError) {
+          } catch {
             
             // Method 2: API mà không có country filter (fallback)
             try {
@@ -511,7 +511,7 @@ const AnimeList = () => {
               } else {
                 throw new Error(`Fallback API failed: ${fallbackResponse.status}`)
               }
-            } catch (fallbackError) {
+            } catch {
               
               // Method 3: Try without country filter but for multiple pages if needed
               if (pageNum > 1) {
@@ -546,7 +546,7 @@ const AnimeList = () => {
                       
                       allAnimePages.push(...japaneseAnime)
                     }
-                  } catch (multiError) {
+                  } catch {
                     // Silent fail for individual pages
                   }
                 }
@@ -685,7 +685,7 @@ const AnimeList = () => {
                   _backdrop: getBestAnimeImage(anime, null, 'backdrop'),
                 }
               }
-            } catch (e) {
+            } catch {
               return {
                 ...anime,
                 _tmdb: null,
@@ -698,7 +698,7 @@ const AnimeList = () => {
           setMovies(enrichedAnime)
           return // Exit early after successful enrichment
           
-        } catch (apiError) {
+        } catch {
           // Comprehensive Fallback: Fetch from multiple sources
           const allAnimeMovies = []
           
@@ -722,7 +722,7 @@ const AnimeList = () => {
             const categoryItems = Array.isArray(categoryData?.items || categoryData?.data) ? (categoryData.items || categoryData.data) : []
             allAnimeMovies.push(...categoryItems)
             
-          } catch (e) {
+          } catch {
             // Silent fail for alternative APIs
           }
           
@@ -743,7 +743,7 @@ const AnimeList = () => {
               if (allAnimeMovies.length >= pageNum * itemsPerPage) {
                 break
               }
-            } catch (e) {
+            } catch {
               break
             }
           }
@@ -794,7 +794,7 @@ const AnimeList = () => {
               _backdrop: getBestAnimeImage(movie, null, 'backdrop'),
             }
           }
-        } catch (e) {
+        } catch {
           return {
             ...movie,
             _tmdb: null,
@@ -816,6 +816,7 @@ const AnimeList = () => {
   // Load movies when page or keyword changes
   useEffect(() => {
     loadMovies(page, keyword)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, keyword])
   
   // Update search keyword state when URL changes
@@ -987,7 +988,7 @@ const AnimeList = () => {
             ) : (
               <div className='loading-grid'>
                 {Array.from({length: 20}).map((_, i) => (
-                  <div key={i} className='movie-card-skeleton'></div>
+                  <div key={`skeleton-${i}`} className='movie-card-skeleton'></div>
                 ))}
               </div>
             )}
@@ -998,7 +999,7 @@ const AnimeList = () => {
             <div className='movies-grid'>
               {movies.map((movie, index) => (
                 <div 
-                  key={movie.slug || index} 
+                  key={movie.slug ? `movie-${movie.slug}` : `movie-index-${index}`} 
                   className='movie-card'
                   onClick={() => handleMovieClick(movie)}
                 >
@@ -1059,10 +1060,10 @@ const AnimeList = () => {
                 <div className='page-numbers'>
                   {getPageNumbers().map((pageNum, index) => (
                     pageNum === '...' ? (
-                      <span key={index} className='dots'>...</span>
+                      <span key={`dots-${index}`} className='dots'>...</span>
                     ) : (
                       <button
-                        key={pageNum}
+                        key={`page-${pageNum}`}
                         className={`page-btn ${pageNum === page ? 'active' : ''}`}
                         onClick={() => handlePageChange(pageNum)}
                       >

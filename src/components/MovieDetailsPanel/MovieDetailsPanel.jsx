@@ -5,7 +5,35 @@ import { buildTmdbImagePath } from '../../services/tmdb'
 import { toast } from 'react-toastify'
 
 const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
+  const navigate = useNavigate()
+  
+  const readProgress = useMemo(() => (ep) => {
+    try {
+      const key = `watchProgress:${movie?.slug}:${ep?.slug || ep?.name}`
+      const raw = localStorage.getItem(key)
+      if (!raw) return null
+      const obj = JSON.parse(raw)
+      if (!obj || typeof obj.currentTime !== 'number' || typeof obj.duration !== 'number') return null
+      return obj
+    } catch {
+      return null
+    }
+  }, [movie?.slug])
+
+  const hasAnyProgress = useMemo(() => {
+    if (!movie) return false
+    const eps = detail?.episodes || []
+    for (const srv of eps) {
+      for (const ep of srv?.server_data || []) {
+        const pr = readProgress(ep)
+        if (pr && pr.currentTime > 0) return true
+      }
+    }
+    return false
+  }, [detail, movie, readProgress])
+
   if (!movie) return null
+  
   const backdrop = movie?._backdrop || buildTmdbImagePath(movie?._tmdb?.backdrop_path, 'w780') || ''
   const title = movie?.name || movie?.origin_name || movie?.title || detail?.movie?.name || ''
   const desc = detail?.movie?.content || detail?.movie?.description || ''
@@ -19,8 +47,6 @@ const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
     }
     return null
   })()
-
-  const navigate = useNavigate()
   const handlePlayNow = () => {
     if (!firstPlayable) return
     
@@ -34,7 +60,12 @@ const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
       returnPath: window.location.pathname
     }
     
-    try { window.__lastEp = firstPlayable; window.__lastWatchState = state } catch (_) {}
+    try { 
+      window.__lastEp = firstPlayable
+      window.__lastWatchState = state 
+    } catch {
+      // Ignore errors
+    }
     navigate('/watch', { state })
   }
 
@@ -54,31 +85,14 @@ const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
       episodes: detail?.episodes || [],
       returnPath: window.location.pathname
     }
-    try { window.__lastEp = ep; window.__lastWatchState = state } catch (_) {}
+    try { 
+      window.__lastEp = ep
+      window.__lastWatchState = state 
+    } catch {
+      // Ignore errors
+    }
     navigate('/watch', { state })
   }
-
-  const readProgress = (ep) => {
-    try {
-      const key = `watchProgress:${movie?.slug}:${ep?.slug || ep?.name}`
-      const raw = localStorage.getItem(key)
-      if (!raw) return null
-      const obj = JSON.parse(raw)
-      if (!obj || typeof obj.currentTime !== 'number' || typeof obj.duration !== 'number') return null
-      return obj
-    } catch (_) { return null }
-  }
-
-  const hasAnyProgress = useMemo(() => {
-    const eps = detail?.episodes || []
-    for (const srv of eps) {
-      for (const ep of srv?.server_data || []) {
-        const pr = readProgress(ep)
-        if (pr && pr.currentTime > 0) return true
-      }
-    }
-    return false
-  }, [detail, movie?.slug])
 
   return (
     <div className={`mdp ${open ? 'mdp-open' : 'mdp-close'}`}>
@@ -103,7 +117,16 @@ const MovieDetailsPanel = ({ open, onClose, movie, detail }) => {
               <div className='mdp-episode-list'>
                 {(server?.server_data || []).map((ep, eIdx) => (
                   <div className='mdp-episode' key={eIdx} onClick={() => handleEpisodeClick(ep)}>
-                    <div className='mdp-episode-thumb'>
+                    <div 
+                      className='mdp-episode-thumb'
+                      style={{ 
+                        backgroundImage: backdrop ? `url(${backdrop})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    >
+                      <div className='mdp-episode-overlay'></div>
+                      <div className='mdp-play-icon'>▶</div>
                       {(() => {
                         const prog = readProgress(ep)
                         if (!prog || !prog.duration) return null

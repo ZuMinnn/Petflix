@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './WatchHistory.css'
 import Navbar from '../../components/Navbar/Navbar'
@@ -7,6 +7,202 @@ import MovieDetailsPanel from '../../components/MovieDetailsPanel/MovieDetailsPa
 import { fetchMovieDetailBySlug } from '../../services/phimapi'
 import { auth, getUserWatchHistory, subscribeToWatchHistory, deleteFromWatchHistory, clearAllWatchHistory, saveWatchProgress } from '../../firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
+
+// Global cache để tránh gọi API trùng lặp
+const posterCache = new Map()
+const loadingQueue = new Set()
+
+// Rate limiter để tránh spam API
+let lastApiCall = 0
+const API_DELAY = 1000 // 1 giây giữa mỗi API call
+
+// Cache key cho localStorage
+const CACHE_KEY = 'moviePosterCache'
+const CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000 // 7 ngày
+
+// Load cache từ localStorage
+const loadCacheFromStorage = () => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const parsed = JSON.parse(cached)
+      const now = Date.now()
+      
+      // Filter out expired entries
+      const validEntries = Object.entries(parsed).filter(([, value]) => {
+        return value.timestamp && (now - value.timestamp) < CACHE_EXPIRY
+      })
+      
+      // Convert back to Map
+      validEntries.forEach(([key, value]) => {
+        posterCache.set(key, value.url)
+      })
+      
+      // Update localStorage with only valid entries
+      if (validEntries.length !== Object.keys(parsed).length) {
+        const validCache = Object.fromEntries(
+          validEntries.map(([key, value]) => [key, value])
+        )
+        localStorage.setItem(CACHE_KEY, JSON.stringify(validCache))
+      }
+    }
+  } catch (error) {
+    console.error('Error loading poster cache:', error)
+  }
+}
+
+// Save cache to localStorage
+const saveCacheToStorage = (movieSlug, posterUrl) => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY)
+    const cache = cached ? JSON.parse(cached) : {}
+    
+    cache[movieSlug] = {
+      url: posterUrl,
+      timestamp: Date.now()
+    }
+    
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+  } catch (error) {
+    console.error('Error saving poster cache:', error)
+  }
+}
+
+// Initialize cache from localStorage
+loadCacheFromStorage()
+
+// Clear old cache entries
+const clearOldCache = () => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const parsed = JSON.parse(cached)
+      const now = Date.now()
+      
+      // Keep only entries newer than 7 days
+      const validEntries = Object.entries(parsed).filter(([, value]) => {
+        return value.timestamp && (now - value.timestamp) < CACHE_EXPIRY
+      })
+      
+      const validCache = Object.fromEntries(validEntries)
+      localStorage.setItem(CACHE_KEY, JSON.stringify(validCache))
+      
+      // Update in-memory cache
+      posterCache.clear()
+      validEntries.forEach(([key, value]) => {
+        posterCache.set(key, value.url)
+      })
+      
+      return validEntries.length
+    }
+  } catch (error) {
+    console.error('Error clearing old cache:', error)
+  }
+  return 0
+}
+
+const MoviePoster = ({ movieSlug, title, index = 0 }) => {
+  const [posterUrl, setPosterUrl] = useState(null)
+  const [imageError, setImageError] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const loadPosterWithDelay = async () => {
+      if (!movieSlug || posterCache.has(movieSlug) || loadingQueue.has(movieSlug)) {
+        // Nếu đã có cache hoặc đang loading, sử dụng cache
+        const cached = posterCache.get(movieSlug)
+        if (cached) {
+          setPosterUrl(cached)
+        }
+        return
+      }
+
+      // Thêm delay dựa trên index để tránh gọi API cùng lúc
+      const delay = index * 800 + Math.random() * 500 // Stagger loading
+      
+      setTimeout(async () => {
+        if (loadingQueue.has(movieSlug)) return
+        
+        loadingQueue.add(movieSlug)
+        setLoading(true)
+
+        try {
+          // Rate limiting
+          const now = Date.now()
+          const timeSinceLastCall = now - lastApiCall
+          if (timeSinceLastCall < API_DELAY) {
+            await new Promise(resolve => setTimeout(resolve, API_DELAY - timeSinceLastCall))
+          }
+          lastApiCall = Date.now()
+
+          const detail = await fetchMovieDetailBySlug(movieSlug)
+          let url = null
+          
+          if (detail?.movie?.poster_url) {
+            url = detail.movie.poster_url
+          } else if (detail?.movie?.thumb_url) {
+            url = detail.movie.thumb_url
+          }
+
+          if (url) {
+            posterCache.set(movieSlug, url)
+            saveCacheToStorage(movieSlug, url)
+            setPosterUrl(url)
+          } else {
+            posterCache.set(movieSlug, 'error')
+            setImageError(true)
+          }
+        } catch (error) {
+          console.error(`Error loading poster for ${movieSlug}:`, error)
+          posterCache.set(movieSlug, 'error')
+          setImageError(true)
+        } finally {
+          setLoading(false)
+          loadingQueue.delete(movieSlug)
+        }
+      }, delay)
+    }
+
+    loadPosterWithDelay()
+  }, [movieSlug, index])
+
+  const handleImageError = () => {
+    setImageError(true)
+    posterCache.set(movieSlug, 'error')
+  }
+
+  if (loading) {
+    return (
+      <div className='history-poster'>
+        <div className='history-placeholder loading-placeholder'>
+          ⏳
+        </div>
+      </div>
+    )
+  }
+
+  if (!posterUrl || imageError || posterCache.get(movieSlug) === 'error') {
+    return (
+      <div className='history-poster'>
+        <div className='history-placeholder'>
+          📺
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className='history-poster'>
+      <img 
+        src={posterUrl} 
+        alt={title || 'Movie poster'} 
+        className='history-poster-image'
+        onError={handleImageError}
+        loading="lazy"
+      />
+    </div>
+  )
+}
 
 const WatchHistory = () => {
   const navigate = useNavigate()
@@ -17,26 +213,7 @@ const WatchHistory = () => {
   const [movieDetail, setMovieDetail] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  // Load watch history and setup real-time subscription
-  useEffect(() => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-
-    loadWatchHistory()
-
-    // Setup real-time subscription
-    const unsubscribe = subscribeToWatchHistory(user.uid, (history) => {
-      setWatchHistory(history)
-    })
-
-    return () => {
-      unsubscribe()
-    }
-  }, [user, navigate])
-
-  const loadWatchHistory = async () => {
+  const loadWatchHistory = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -53,7 +230,29 @@ const WatchHistory = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  // Load watch history and setup real-time subscription
+  useEffect(() => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    // Clean up old cache entries on mount
+    clearOldCache()
+
+    loadWatchHistory()
+
+    // Setup real-time subscription
+    const unsubscribe = subscribeToWatchHistory(user.uid, (history) => {
+      setWatchHistory(history)
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [user, navigate, loadWatchHistory])
 
   // Clear all watch history
   const clearHistory = async () => {
@@ -148,6 +347,10 @@ const WatchHistory = () => {
       }
     }
     
+    // Debug poster cache
+    const posterCacheData = localStorage.getItem(CACHE_KEY)
+    const posterCacheCount = posterCacheData ? Object.keys(JSON.parse(posterCacheData)).length : 0
+    
     // Debug Firebase (new system)
     if (user) {
       try {
@@ -156,16 +359,34 @@ const WatchHistory = () => {
         alert(`
 LocalStorage (old): ${progressKeys.length} entries
 Firebase (new): ${firebaseHistory.length} entries
+Poster Cache: ${posterCacheCount} entries
 Xem console để biết chi tiết.`)
       } catch (e) {
         console.error('Error loading Firebase history:', e)
         alert(`
 LocalStorage (old): ${progressKeys.length} entries
 Firebase (new): Error loading
+Poster Cache: ${posterCacheCount} entries
 Xem console để biết chi tiết.`)
       }
     } else {
-      alert(`Chưa đăng nhập! LocalStorage (old): ${progressKeys.length} entries`)
+      alert(`Chưa đăng nhập! 
+LocalStorage (old): ${progressKeys.length} entries
+Poster Cache: ${posterCacheCount} entries`)
+    }
+  }
+
+  // Clear poster cache
+  const clearPosterCache = () => {
+    if (window.confirm('Bạn có chắc muốn xóa cache hình ảnh poster? Điều này sẽ làm chậm lần tải tiếp theo.')) {
+      try {
+        localStorage.removeItem(CACHE_KEY)
+        posterCache.clear()
+        alert('✅ Đã xóa cache poster thành công!')
+      } catch (error) {
+        console.error('Error clearing poster cache:', error)
+        alert('❌ Lỗi khi xóa cache poster!')
+      }
     }
   }
 
@@ -261,10 +482,13 @@ Xem console để biết chi tiết.`)
           <h1>Phim đã xem</h1>
           <div className='history-actions'>
             <button onClick={loadWatchHistory} className='refresh-btn'>
-              🔄 Làm mới
+               Làm mới
             </button>
             <button onClick={debugLocalStorage} className='debug-btn'>
               🐛 Debug
+            </button>
+            <button onClick={clearPosterCache} className='clear-cache-btn'>
+              🗑️ Clear Cache
             </button>
             <button onClick={createTestData} className='test-btn'>
               🧪 Test Data
@@ -274,7 +498,7 @@ Xem console để biết chi tiết.`)
             </button>
             {watchHistory.length > 0 && (
               <button onClick={clearHistory} className='clear-btn'>
-                🗑️ Xóa tất cả
+                 Xóa tất cả
               </button>
             )}
           </div>
@@ -293,10 +517,12 @@ Xem console để biết chi tiết.`)
               <div className='history-grid'>
                                  {watchHistory.map((item, index) => (
                    <div key={item.id || item.movieSlug || index} className='history-card'>
-                    <div className='history-poster'>
-                      <div className='history-placeholder'>
-                        📺
-                      </div>
+                    <div className='history-poster-container'>
+                      <MoviePoster 
+                        movieSlug={item.movieSlug} 
+                        title={item.title}
+                        index={index}
+                      />
                       <div className='history-progress-bar'>
                         <div 
                           className='history-progress-fill'
@@ -314,17 +540,17 @@ Xem console để biết chi tiết.`)
                           className='details-btn'
                           onClick={() => viewMovieDetails(item)}
                         >
-                          ℹ️ Chi tiết
+                           Chi tiết
                         </button>
                       </div>
                     </div>
                     <div className='history-info'>
                       <h3 className='history-title'>{item.title || 'Không rõ tên'}</h3>
                       <p className='history-episode'>
-                        Tập: {item.episodeSlug || 'N/A'}
+                        Tậ nep: {item.episodeSlug || 'N/A'}
                       </p>
                       <p className='history-progress'>
-                        Đã xem: {formatProgress(item.currentTime, item.duration)}
+                        Đã xem
                       </p>
                       <p className='history-time'>
                         {formatWatchTime(item.updatedAt)}

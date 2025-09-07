@@ -28,7 +28,7 @@ const HeroBanner = ({
     if (videoRef.current) {
       videoRef.current.muted = isMuted
       
-      // Thử phát video với âm thanh, nếu fail thì fallback về muted
+     // Thử phát video với âm thanh, nếu fail thì fallback về muted
       if (!isMuted) {
         videoRef.current.play().catch(() => {
           console.log('Autoplay with sound blocked, falling back to muted')
@@ -113,7 +113,7 @@ const HeroBanner = ({
           try {
             await videoRef.current.play()
           } catch (mutedError) {
-            console.log('Autoplay completely blocked')
+            // console.log('Autoplay completely blocked')
           }
         }
       }

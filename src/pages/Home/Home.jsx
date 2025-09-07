@@ -4,7 +4,7 @@ import Navbar from '../../components/Navbar/Navbar'
 import HeroBanner from '../../components/HeroBanner/HeroBanner'
 import TitleCards from '../../components/TitleCards/TitleCards'
 import Footer from '../../components/Footer/Footer'
-import Flag from '../../assets/VNFLAG.jpg'
+// import Flag from '../../assets/VNFLAG.jpg'
 
 const Home = () => {
   return (
@@ -12,12 +12,12 @@ const Home = () => {
       <Navbar/>
       <HeroBanner/>
       
-      {/* Vietnam Pride Section */}
+      {/* Vietnam Pride Section
               <div className="vietnam-pride-section">
           <div className="pride-content">
             <h2> Mừng Đại Lễ - Tự Hào Việt Nam <img src={Flag} alt="Cờ Việt Nam" className="vn-flag" /></h2>
           </div>
-        </div>
+        </div> */}
 
       <div className="more-cards">
         <TitleCards title={"Phim Lẻ "} category={"phim-le"}/>

@@ -26,7 +26,7 @@ const SimpleMovies = () => {
   const [selectedMovie, setSelectedMovie] = useState(null)
   const [movieDetail, setMovieDetail] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [detailLoading, setDetailLoading] = useState(false)
+  const [, setDetailLoading] = useState(false)
   
   // Search states
   const [searchKeyword, setSearchKeyword] = useState(keyword)
@@ -55,7 +55,7 @@ const SimpleMovies = () => {
     }
     
     const directResults = await Promise.allSettled(directSearchPromises)
-    directResults.forEach((result, index) => {
+    directResults.forEach((result) => {
       if (result.status === 'fulfilled' && result.value?.items) {
         allMovies.push(...result.value.items)
       }
@@ -79,7 +79,7 @@ const SimpleMovies = () => {
         }
         
         const wordResults = await Promise.allSettled(wordSearchPromises)
-        wordResults.forEach((result, index) => {
+        wordResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value?.items) {
             allMovies.push(...result.value.items)
           }
@@ -121,7 +121,7 @@ const SimpleMovies = () => {
         }
         
         const altResults = await Promise.allSettled(altSearchPromises)
-        altResults.forEach((result, index) => {
+        altResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value?.items) {
             allMovies.push(...result.value.items)
           }
@@ -144,7 +144,7 @@ const SimpleMovies = () => {
         const latestResults = await Promise.allSettled(latestMoviesPromises)
         const latestMovies = []
         
-        latestResults.forEach((result, index) => {
+        latestResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value?.items) {
             latestMovies.push(...result.value.items)
           }
@@ -336,6 +336,7 @@ const SimpleMovies = () => {
   // Load movies when page or keyword changes
   useEffect(() => {
     loadMovies(page, keyword)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, keyword])
   
   // Update search keyword state when URL changes
@@ -512,7 +513,7 @@ const SimpleMovies = () => {
             <div className='movies-grid'>
               {movies.map((movie, index) => (
                 <div 
-                  key={movie.slug || index} 
+                  key={movie.slug ? `movie-${movie.slug}` : `movie-index-${index}`} 
                   className='movie-card'
                   onClick={() => handleMovieClick(movie)}
                 >
@@ -558,10 +559,10 @@ const SimpleMovies = () => {
                 <div className='page-numbers'>
                   {getPageNumbers().map((pageNum, index) => (
                     pageNum === '...' ? (
-                      <span key={index} className='dots'>...</span>
+                      <span key={`dots-${index}`} className='dots'>...</span>
                     ) : (
                       <button
-                        key={pageNum}
+                        key={`page-${pageNum}`}
                         className={`page-btn ${pageNum === page ? 'active' : ''}`}
                         onClick={() => handlePageChange(pageNum)}
                       >
