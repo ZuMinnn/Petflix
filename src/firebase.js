@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { addDoc, getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, where } from "firebase/firestore";
+import { addDoc, getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, where, limit, startAfter } from "firebase/firestore";
 import { toast } from "react-toastify";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -190,6 +190,206 @@ const clearAllWatchHistory = async (userId) => {
     }
 };
 
+// ============ MOVIE DATABASE FUNCTIONS ============
+
+// Lấy danh sách phim từ database
+const getMovies = async (limitCount = 50, orderByField = 'modified', orderDirection = 'desc') => {
+    try {
+        const moviesRef = collection(db, 'movies');
+        const q = query(
+            moviesRef, 
+            orderBy(orderByField, orderDirection), 
+            limit(limitCount)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const movies = [];
+        querySnapshot.forEach((doc) => {
+            movies.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        return movies;
+    } catch (error) {
+        console.error('❌ Error getting movies:', error);
+        return [];
+    }
+};
+
+// Cache cho tìm kiếm
+let moviesCache = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 phút
+
+// Function để clear cache
+const clearMoviesCache = () => {
+    moviesCache = null;
+    cacheTimestamp = 0;
+};
+
+// Tìm kiếm phim trong database với cache
+const searchMovies = async (keyword, limitCount = 20) => {
+    try {
+        if (!keyword || keyword.trim() === '') {
+            return [];
+        }
+
+        // Kiểm tra cache
+        const now = Date.now();
+        if (!moviesCache || (now - cacheTimestamp) > CACHE_DURATION) {
+            
+            // Lấy phim với pagination
+            const moviesRef = collection(db, 'movies');
+            const allMovies = [];
+            let lastDoc = null;
+            const batchSize = 1000; // Firestore limit
+            const maxBatches = 8; // Tối đa 8,000 phim để tránh timeout
+            
+            for (let i = 0; i < maxBatches; i++) {
+                let q;
+                if (lastDoc) {
+                    q = query(
+                        moviesRef,
+                        orderBy('modified', 'desc'),
+                        startAfter(lastDoc),
+                        limit(batchSize)
+                    );
+                } else {
+                    q = query(
+                        moviesRef,
+                        orderBy('modified', 'desc'),
+                        limit(batchSize)
+                    );
+                }
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) break;
+                
+                querySnapshot.forEach((doc) => {
+                    allMovies.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+                
+                // Nếu lấy được ít hơn batchSize thì đã hết dữ liệu
+                if (querySnapshot.docs.length < batchSize) break;
+            }
+            
+            moviesCache = allMovies;
+            cacheTimestamp = now;
+        }
+
+        // Filter trong JavaScript - tìm kiếm toàn diện
+        const keywordLower = keyword.toLowerCase().trim();
+        const filteredMovies = moviesCache.filter(movie => {
+            // Tìm kiếm trong tên phim
+            const nameMatch = movie.name && movie.name.toLowerCase().includes(keywordLower);
+            const originNameMatch = movie.origin_name && movie.origin_name.toLowerCase().includes(keywordLower);
+            
+            // Tìm kiếm trong mô tả
+            const contentMatch = movie.content && movie.content.toLowerCase().includes(keywordLower);
+            
+            // Tìm kiếm trong diễn viên
+            const actorsMatch = movie.actors && Array.isArray(movie.actors) && 
+                movie.actors.some(actor => actor.toLowerCase().includes(keywordLower));
+            
+            // Tìm kiếm trong đạo diễn
+            const directorsMatch = movie.directors && Array.isArray(movie.directors) && 
+                movie.directors.some(director => director.toLowerCase().includes(keywordLower));
+            
+            // Tìm kiếm trong thể loại
+            const categoryMatch = movie.category && Array.isArray(movie.category) && 
+                movie.category.some(cat => 
+                    cat.name && cat.name.toLowerCase().includes(keywordLower) ||
+                    cat.slug && cat.slug.toLowerCase().includes(keywordLower)
+                );
+            
+            // Tìm kiếm trong quốc gia
+            const countryMatch = movie.country && Array.isArray(movie.country) && 
+                movie.country.some(country => 
+                    country.name && country.name.toLowerCase().includes(keywordLower) ||
+                    country.slug && country.slug.toLowerCase().includes(keywordLower)
+                );
+            
+            // Tìm kiếm trong tags
+            const tagsMatch = movie.tags && Array.isArray(movie.tags) && 
+                movie.tags.some(tag => tag.toLowerCase().includes(keywordLower));
+            
+            // Tìm kiếm trong năm
+            const yearMatch = movie.year && movie.year.toString().includes(keywordLower);
+            
+            
+            return nameMatch || originNameMatch || contentMatch || actorsMatch || 
+                   directorsMatch || categoryMatch || countryMatch || tagsMatch || yearMatch;
+        });
+
+        // Nếu không tìm thấy kết quả, thử tìm kiếm trực tiếp
+        if (filteredMovies.length === 0) {
+            
+            try {
+                const moviesRef = collection(db, 'movies');
+                const q = query(
+                    moviesRef,
+                    orderBy('modified', 'desc'),
+                    limit(1000)
+                );
+                const querySnapshot = await getDocs(q);
+                
+                const directResults = [];
+                querySnapshot.forEach((doc) => {
+                    const movie = {
+                        id: doc.id,
+                        ...doc.data()
+                    };
+                    
+                    // Tìm kiếm trực tiếp
+                    const nameMatch = movie.name && movie.name.toLowerCase().includes(keywordLower);
+                    const originNameMatch = movie.origin_name && movie.origin_name.toLowerCase().includes(keywordLower);
+                    
+                    if (nameMatch || originNameMatch) {
+                        directResults.push(movie);
+                    }
+                });
+                
+                return directResults.slice(0, limitCount);
+            } catch (directError) {
+                console.error('❌ Lỗi tìm kiếm trực tiếp:', directError);
+            }
+        }
+
+        return filteredMovies.slice(0, limitCount);
+    } catch (error) {
+        console.error('❌ Error searching movies:', error);
+        return [];
+    }
+};
+
+// Lấy chi tiết phim từ database
+const getMovieDetails = async (slug) => {
+    try {
+        const detailsRef = doc(db, 'movieDetails', slug);
+        const detailsDoc = await getDocs(detailsRef);
+        
+        if (detailsDoc.exists()) {
+            return {
+                id: detailsDoc.id,
+                ...detailsDoc.data()
+            };
+        }
+        
+        return null;
+    } catch (error) {
+        console.error(`❌ Error getting movie details for ${slug}:`, error);
+        return null;
+    }
+};
+
 export { 
     auth, 
     db, 
@@ -201,5 +401,10 @@ export {
     getUserWatchHistory,
     subscribeToWatchHistory,
     deleteFromWatchHistory,
-    clearAllWatchHistory
+    clearAllWatchHistory,
+    // Movie database functions
+    getMovies,
+    searchMovies,
+    getMovieDetails,
+    clearMoviesCache
 };

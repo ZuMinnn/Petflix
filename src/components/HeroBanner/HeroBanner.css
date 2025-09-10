@@ -179,6 +179,13 @@
     gap: 10px;
 }
 
+/* Volume control wrapper */
+.volume-control-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
 /* Age rating badge */
 .age-rating {
     background: rgba(0, 0, 0, 0.8);
@@ -196,7 +203,6 @@
     background: rgba(0, 0, 0, 0.7);
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
-    font-size: 20px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -206,12 +212,104 @@
     justify-content: center;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
 }
 
 .volume-control:hover {
     background: rgba(0, 0, 0, 0.9);
     border-color: rgba(255, 255, 255, 0.6);
     transform: scale(1.1);
+}
+
+.volume-control svg {
+    width: 20px;
+    height: 20px;
+    transition: all 0.3s ease;
+}
+
+/* Muted state styling */
+.volume-control.muted {
+    background: rgba(255, 0, 0, 0.2);
+    border-color: rgba(255, 0, 0, 0.5);
+}
+
+.volume-control.muted:hover {
+    background: rgba(255, 0, 0, 0.3);
+    border-color: rgba(255, 0, 0, 0.7);
+}
+
+/* Unmuted state styling */
+.volume-control.unmuted {
+    background: rgba(0, 255, 0, 0.2);
+    border-color: rgba(0, 255, 0, 0.5);
+}
+
+.volume-control.unmuted:hover {
+    background: rgba(0, 255, 0, 0.3);
+    border-color: rgba(0, 255, 0, 0.7);
+}
+
+/* Ripple effect on click */
+.volume-control::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.volume-control:active::before {
+    width: 100px;
+    height: 100px;
+}
+
+/* Mute hint tooltip */
+.mute-hint {
+    display:none;
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: fadeInSlide 0.3s ease-out;
+    z-index: 10;
+}
+
+.mute-hint .hint-arrow {
+    display: none;
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid rgba(0, 0, 0, 0.9);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
 }
 
 
@@ -249,7 +347,17 @@
     .volume-control {
         width: 35px;
         height: 35px;
-        font-size: 14px;
+    }
+    
+    .volume-control svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .mute-hint {
+        font-size: 11px;
+        padding: 6px 10px;
+        right: 45px;
     }
 }
 
@@ -332,6 +440,16 @@
     .volume-control {
         width: 30px;
         height: 30px;
-        font-size: 12px;
+    }
+    
+    .volume-control svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .mute-hint {
+        font-size: 10px;
+        padding: 5px 8px;
+        right: 40px;
     }
 }

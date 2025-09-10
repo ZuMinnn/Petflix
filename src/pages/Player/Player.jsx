@@ -1,8 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import './Player.css'
 import back_arrow from '../../assets/back_arrow_icon.png'
-import { buildEmbedUrl } from '../../utils/embed'
+import { 
+  retryWithBackoff, 
+  formatVideoError,
+  createFallbackSources
+} from '../../utils/videoUtils'
 import MovieDetailsPanel from '../../components/MovieDetailsPanel/MovieDetailsPanel'
 import SafeIframe from '../../components/SafeIframe/SafeIframe'
 import { fetchMovieDetailBySlug } from '../../services/phimapi'
@@ -10,7 +14,7 @@ import { auth, saveWatchProgress } from '../../firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
 
 const Player = () => {
-  const { id, type } = useParams();
+  const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [user] = useAuthState(auth);
@@ -21,11 +25,14 @@ const Player = () => {
   const lastSavedRef = useRef(0);
   const [useHLS, setUseHLS] = useState(false);
   const [forceHLS, setForceHLS] = useState(false);
-  const [showControls, setShowControls] = useState(false);
   const [episodes, setEpisodes] = useState([]);
   const [currentEpisode, setCurrentEpisode] = useState(null);
   const [showMovieDetails, setShowMovieDetails] = useState(false);
   const [movieDetail, setMovieDetail] = useState(null);
+  const [videoError, setVideoError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [fallbackSources, setFallbackSources] = useState([]);
 
   const progressKey = useMemo(() => {
     const movieSlug = location.state?.movieSlug;
@@ -41,13 +48,13 @@ const Player = () => {
   
 
   // TMDB API options
-  const options = {
+  const options = useMemo(() => ({
     method: 'GET',
     headers: {
       accept: 'application/json',
       Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0NGZjMzdlMTdkMTc3NmRkZGZmNjYyMDgyNTlmNzA3ZSIsIm5iZiI6MTc1NjMwMjg2Ny4xNjksInN1YiI6IjY4YWYwZTEzZjE4MWIwOGZlNjRlYmU0ZCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.adMYFbirP6rCF0jtSRvDdpiSC0PLaVEFuQyS0i0od4Q'
     }
-  };
+  }), []);
 
   // Lấy thông tin phim từ TMDB
   useEffect(() => {
@@ -65,7 +72,7 @@ const Player = () => {
     };
 
       fetchMovieData();
-  }, [id]);
+  }, [id, options]);
 
   // Derive title from route state or TMDB
   useEffect(() => {
@@ -104,6 +111,59 @@ const Player = () => {
     }
   }, [location.state?.episodes, location.state?.episodeSlug]);
 
+  // Initialize video sources and fallbacks
+  useEffect(() => {
+    const sources = {
+      link_m3u8: location.state?.link_m3u8,
+      link_embed: location.state?.link_embed
+    };
+    
+    const fallbacks = createFallbackSources(sources);
+    setFallbackSources(fallbacks);
+    
+    // Fallbacks are ready for retry mechanism
+  }, [location.state?.link_m3u8, location.state?.link_embed]);
+
+  // Retry mechanism for failed video loads
+  const retryVideoLoad = async () => {
+    if (retryCount >= 3) {
+      setVideoError('Không thể tải video sau nhiều lần thử. Vui lòng thử lại sau.');
+      return;
+    }
+
+    setIsRetrying(true);
+    setRetryCount(prev => prev + 1);
+    setVideoError(null);
+
+    try {
+      // Try next fallback source if available
+      const nextSourceIndex = retryCount;
+      if (nextSourceIndex < fallbackSources.length) {
+        const nextSource = fallbackSources[nextSourceIndex];
+        
+        if (nextSource.type === 'embed') {
+          setUseHLS(false);
+        } else if (nextSource.type === 'm3u8') {
+          setUseHLS(true);
+        }
+      } else {
+        // All sources exhausted, try current source again
+        await retryWithBackoff(async () => {
+          const videoEl = videoRef.current;
+          if (videoEl) {
+            videoEl.src = '';
+            videoEl.load();
+          }
+        }, 1, 2000);
+      }
+    } catch (error) {
+      console.error('Retry failed:', error);
+      setVideoError(formatVideoError(error));
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   // Initialize Embed first, HLS as fallback
   useEffect(() => {
     const m3u8 = location.state?.link_m3u8;
@@ -111,6 +171,10 @@ const Player = () => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
     
+    // Reset error state
+    setVideoError(null);
+    setRetryCount(0);
+
     // Prioritize embed first
     if (!embed) {
       if (m3u8) setUseHLS(true);
@@ -123,27 +187,56 @@ const Player = () => {
     };
 
     const setupHls = () => {
-      // eslint-disable-next-line no-undef
       const HlsCtor = window.Hls;
       if (HlsCtor && HlsCtor.isSupported()) {
-        hlsInstance = new HlsCtor();
+        hlsInstance = new HlsCtor({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90
+        });
+        
         hlsInstance.loadSource(m3u8);
         hlsInstance.attachMedia(videoEl);
+        
         try {
           hlsInstance.on(HlsCtor.Events.ERROR, (event, data) => {
+            console.error('HLS Error:', data);
             if (data?.fatal) {
-              console.log('HLS fatal error, staying with embed');
+              switch (data.type) {
+                case HlsCtor.ErrorTypes.NETWORK_ERROR:
+                  hlsInstance.startLoad();
+                  break;
+                case HlsCtor.ErrorTypes.MEDIA_ERROR:
+                  hlsInstance.recoverMediaError();
+                  break;
+                default:
+                  setVideoError('Lỗi phát video. Vui lòng thử lại.');
+                  break;
+              }
             }
           });
-        } catch (_) {}
-        const onVideoError = () => { 
-          console.log('HLS video error, staying with embed');
+        } catch (error) {
+          console.warn('HLS error handler setup failed:', error);
+        }
+        
+        const onVideoError = (e) => { 
+          console.error('Video element error:', e);
+          setVideoError(formatVideoError(e));
         };
+        
+        const onLoadStart = () => {
+          setVideoError(null);
+        };
+        
         videoEl.addEventListener('error', onVideoError);
+        videoEl.addEventListener('loadstart', onLoadStart);
+        
         // cleanup video error listener
-        const cleanupVideo = () => videoEl.removeEventListener('error', onVideoError);
-        // attach to cleanup below via return function
-        // eslint-disable-next-line consistent-return
+        const cleanupVideo = () => {
+          videoEl.removeEventListener('error', onVideoError);
+          videoEl.removeEventListener('loadstart', onLoadStart);
+        };
+        
         return cleanupVideo;
       } else if (videoEl.canPlayType('application/vnd.apple.mpegURL')) {
         setupNative();
@@ -159,6 +252,9 @@ const Player = () => {
       script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
       script.async = true;
       script.onload = setupHls;
+      script.onerror = () => {
+        setVideoError('Không thể tải thư viện phát video. Vui lòng kiểm tra kết nối mạng.');
+      };
       document.body.appendChild(script);
       return () => {
         document.body.removeChild(script);
@@ -173,7 +269,7 @@ const Player = () => {
         hlsInstance.destroy();
       }
     };
-  }, [location.state?.link_m3u8, location.state?.link_embed, forceHLS]);
+  }, [location.state?.link_m3u8, location.state?.link_embed, forceHLS, retryCount]);
 
   // Restore saved progress when metadata is ready (m3u8 only)
   useEffect(() => {
@@ -188,7 +284,9 @@ const Player = () => {
         if (typeof saved?.currentTime === 'number' && saved.currentTime > 0 && saved.currentTime < videoEl.duration) {
           videoEl.currentTime = saved.currentTime;
         }
-      } catch (_) {}
+      } catch (error) {
+        console.warn('Progress restore failed:', error);
+      }
     };
 
     videoEl.addEventListener('loadedmetadata', onLoadedMetadata);
@@ -267,17 +365,15 @@ const Player = () => {
       videoEl.removeEventListener('timeupdate', onTimeUpdate);
       saveNow();
     };
-  }, [progressKey, location.state?.link_m3u8, title, user]);
+  }, [progressKey, location.state?.link_m3u8, location.state?.episodeSlug, location.state?.link_embed, location.state?.movieSlug, title, user]);
 
-  // Tạo URL embed từ template cấu hình
-  const getEmbedUrl = () => buildEmbedUrl(id);
 
   const handleBack = () => {
     // Quay về trang trước đó (nơi hiển thị MovieDetailsPanel)
     navigate(-1);
   };
 
-  const openMovieDetails = async () => {
+  const openMovieDetails = useCallback(async () => {
     // Mở MovieDetailsPanel ngay trong Player
     if (location.state?.movieSlug) {
       try {
@@ -296,7 +392,7 @@ const Player = () => {
       // Fallback: quay về trang chủ
       navigate('/');
     }
-  };
+  }, [location.state?.movieSlug, navigate]);
 
   const closeMovieDetails = () => {
     setShowMovieDetails(false);
@@ -324,10 +420,6 @@ const Player = () => {
     }
   };
 
-  const openSourceInNewTab = () => {
-    const url = (useHLS || forceHLS) && location.state?.link_m3u8 ? location.state.link_m3u8 : location.state?.link_embed;
-    if (url) window.open(url, '_blank');
-  };
 
   const toggleSource = () => {
     if (location.state?.link_m3u8 && location.state?.link_embed) {
@@ -423,13 +515,51 @@ const Player = () => {
 
       {/* Video Container */}
       <div className="video-container">
-        {(useHLS || forceHLS) && location.state?.link_m3u8 ? (
+        {videoError ? (
+          <div className="video-error-container">
+            <div className="video-error">
+              <div className="error-icon">⚠️</div>
+              <h3>Lỗi phát video</h3>
+              <p>{videoError}</p>
+              <div className="error-actions">
+                <button 
+                  onClick={retryVideoLoad} 
+                  disabled={isRetrying || retryCount >= 3}
+                  className="retry-button"
+                >
+                  {isRetrying ? 'Đang thử lại...' : `Thử lại (${retryCount}/3)`}
+                </button>
+                <button 
+                  onClick={() => navigate(-1)} 
+                  className="back-button"
+                >
+                  Quay lại
+                </button>
+              </div>
+              {retryCount >= 3 && (
+                <div className="error-suggestions">
+                  <p>Gợi ý khắc phục:</p>
+                  <ul>
+                    <li>Kiểm tra kết nối mạng</li>
+                    <li>Thử chọn tập khác</li>
+                    <li>Làm mới trang web</li>
+                    <li>Thử trình duyệt khác</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (useHLS || forceHLS) && location.state?.link_m3u8 ? (
           <video
             ref={videoRef}
             className="hls-video"
             controls
             autoPlay
             playsInline
+            onError={(e) => {
+              console.error('Video error:', e);
+              setVideoError(formatVideoError(e));
+            }}
           />
         ) : location.state?.link_embed ? (
           <SafeIframe
@@ -439,6 +569,8 @@ const Player = () => {
               console.warn('Embed iframe failed, falling back to HLS if available')
               if (location.state?.link_m3u8) {
                 setUseHLS(true)
+              } else {
+                setVideoError('Không thể tải video embed. Vui lòng thử lại.');
               }
             }}
             fallback={

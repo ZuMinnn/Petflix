@@ -60,7 +60,7 @@ const Navbar = () => {
         </ul>
       </div>
       <div className='navbar-right'>
-        <img src={search_icon} alt=""className='icons'  />
+        <img src={search_icon} alt=""className='icons' onClick={() => navigate('/search')} />
         <p>{userName || 'User'}</p>
         <img src={bell_icon} alt="" className='icons' />
         <div className="navbar-profile">

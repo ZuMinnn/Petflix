@@ -4,7 +4,7 @@
     position: relative;
 }
 
-.title-cards h2 { margin-bottom: 10px; font-size: 20px; letter-spacing: .2px; }
+.title-cards h2 { font-family:Be Vietnam Pro; 10px; font-size: 20px; letter-spacing: .2px; }
 
 .cards-container {
     position: relative;

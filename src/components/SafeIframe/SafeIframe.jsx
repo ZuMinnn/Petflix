@@ -22,16 +22,31 @@ const SafeIframe = ({ src, title, onError, fallback, ...props }) => {
       iframe.addEventListener('load', handleLoad)
       iframe.addEventListener('error', handleError)
       
+      // Listen for CORS and security errors
+      const handleMessage = (event) => {
+        // Check if message is from the iframe
+        if (event.origin !== new URL(src).origin) return
+        
+        if (event.data && typeof event.data === 'object') {
+          if (event.data.type === 'error' || event.data.error) {
+            handleError()
+          }
+        }
+      }
+      
+      window.addEventListener('message', handleMessage)
+      
       // Timeout để phát hiện lỗi
       const timeout = setTimeout(() => {
         if (isLoading) {
           handleError()
         }
-      }, 10000) // 10 giây timeout
+      }, 15000) // 15 giây timeout
 
       return () => {
         iframe.removeEventListener('load', handleLoad)
         iframe.removeEventListener('error', handleError)
+        window.removeEventListener('message', handleMessage)
         clearTimeout(timeout)
       }
     }

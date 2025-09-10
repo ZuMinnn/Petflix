@@ -3,8 +3,9 @@ import './Search.css'
 import Navbar from '../../components/Navbar/Navbar'
 import Footer from '../../components/Footer/Footer'
 import MovieDetailsPanel from '../../components/MovieDetailsPanel/MovieDetailsPanel'
-import { searchMovies, fetchMovieDetailBySlug } from '../../services/phimapi'
+import { fetchMovieDetailBySlug } from '../../services/phimapi'
 import { fetchTmdbById, buildTmdbImagePath } from '../../services/tmdb'
+import { searchMovies as searchMoviesInDB, getMovies, clearMoviesCache } from '../../firebase'
 
 const Search = () => {
   const [keyword, setKeyword] = useState('')
@@ -26,10 +27,149 @@ const Search = () => {
   const [selectedMovie, setSelectedMovie] = useState(null)
   const [movieDetail, setMovieDetail] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [detailLoading, setDetailLoading] = useState(false)
   
   const searchInputRef = useRef(null)
   const title = useMemo(() => 'Tìm kiếm', [])
+
+  // Function để clear cache và tìm kiếm lại
+  const clearCacheAndSearch = async () => {
+    clearMoviesCache();
+    
+    // Retry search
+    if (keyword.trim()) {
+      setLoading(true);
+      setError('');
+      
+      try {
+        const result = await searchMovies({ 
+          keyword, 
+          page, 
+          limit: 30, 
+          category: filters.category, 
+          country: filters.country, 
+          year: filters.year, 
+          sort_lang: filters.sort_lang 
+        });
+        
+        setItems(result.items);
+        setPage(result.pagination.currentPage);
+        
+        if (result.items.length === 0) {
+          setError(`Không tìm thấy phim nào với từ khóa "${keyword}"`);
+        }
+      } catch (error) {
+        console.error('❌ Lỗi khi tìm kiếm:', error);
+        setError('Có lỗi xảy ra khi tìm kiếm. Vui lòng thử lại.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Hàm tìm kiếm từ Firebase database
+  const searchMovies = async ({ keyword, page = 1, limit = 30, category = '', country = '', year = '', sort_lang = '' } = {}) => {
+    try {
+      
+      if (!keyword || keyword.trim() === '') {
+        // Nếu không có keyword, lấy phim mới nhất
+        const movies = await getMovies(limit * page, 'modified', 'desc');
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedMovies = movies.slice(startIndex, endIndex);
+        
+        return {
+          items: paginatedMovies,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(movies.length / limit),
+            totalItems: movies.length
+          }
+        };
+      }
+
+      // Tìm kiếm trong database
+      let movies = await searchMoviesInDB(keyword, limit * 3); // Lấy nhiều hơn để filter
+      
+      if (movies && movies.length > 0) {
+        // Lọc theo các tiêu chí
+        let filteredMovies = movies;
+        
+        // Lọc theo thể loại
+        if (category) {
+          filteredMovies = filteredMovies.filter(movie => 
+            movie.category && Array.isArray(movie.category) && 
+            movie.category.some(cat => cat.slug === category)
+          );
+        }
+        
+        // Lọc theo quốc gia
+        if (country) {
+          filteredMovies = filteredMovies.filter(movie => 
+            movie.country && Array.isArray(movie.country) && 
+            movie.country.some(c => c.slug === country)
+          );
+        }
+        
+        // Lọc theo năm
+        if (year) {
+          filteredMovies = filteredMovies.filter(movie => 
+            movie.year === parseInt(year)
+          );
+        }
+        
+        // Lọc theo ngôn ngữ
+        if (sort_lang) {
+          filteredMovies = filteredMovies.filter(movie => 
+            movie.lang && Array.isArray(movie.lang) && 
+            movie.lang.some(l => l.slug === sort_lang)
+          );
+        }
+        
+        // Sắp xếp theo thời gian cập nhật
+        filteredMovies.sort((a, b) => {
+          const aTime = a.modified || a.updatedAt || 0;
+          const bTime = b.modified || b.updatedAt || 0;
+          return bTime - aTime;
+        });
+        
+        // Phân trang
+        const itemsPerPage = limit;
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedMovies = filteredMovies.slice(startIndex, endIndex);
+        
+        return {
+          items: paginatedMovies,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(filteredMovies.length / itemsPerPage),
+            totalItems: filteredMovies.length
+          }
+        };
+      }
+      
+      // Nếu không tìm thấy, trả về kết quả rỗng
+      return {
+        items: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalItems: 0
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Lỗi khi tìm kiếm:', error);
+      return {
+        items: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalItems: 0
+        }
+      };
+    }
+  }
 
   // Load search history from localStorage
   useEffect(() => {
@@ -47,6 +187,13 @@ const Search = () => {
         return 
       }
       
+      // Tránh tìm kiếm với từ khóa quá ngắn
+      if (keyword.trim().length < 2) {
+        setItems([])
+        setShowSuggestions(false)
+        return
+      }
+      
       try {
         setLoading(true)
         setError('')
@@ -61,21 +208,30 @@ const Search = () => {
         const data = await searchMovies(searchParams)
         const list = Array.isArray(data?.items || data?.data) ? (data.items || data.data) : []
         
-        // Only show movies with TMDB for better quality
-        const moviesWithTmdb = list.filter(it => it?.tmdb?.id)
-        
-        const enriched = await Promise.all(moviesWithTmdb.map(async (it) => {
+        // Enrich movies with TMDB data if available, otherwise use original data
+        const enriched = await Promise.all(list.map(async (it) => {
           const tmdbId = it?.tmdb?.id
           const mediaType = it?.type === 'series' ? 'tv' : 'movie'
-          try {
-            const tmdb = await fetchTmdbById(tmdbId, mediaType)
-            return {
-              ...it,
-              _tmdb: tmdb,
-              _poster: buildTmdbImagePath(tmdb?.poster_path, 'w342') || it?.poster_url || '',
-              _backdrop: buildTmdbImagePath(tmdb?.backdrop_path, 'w780') || it?.thumb_url || '',
+          
+          if (tmdbId) {
+            try {
+              const tmdb = await fetchTmdbById(tmdbId, mediaType)
+              return {
+                ...it,
+                _tmdb: tmdb,
+                _poster: buildTmdbImagePath(tmdb?.poster_path, 'w342') || it?.poster_url || '',
+                _backdrop: buildTmdbImagePath(tmdb?.backdrop_path, 'w780') || it?.thumb_url || '',
+              }
+            } catch {
+              return {
+                ...it,
+                _tmdb: null,
+                _poster: it?.poster_url || '',
+                _backdrop: it?.thumb_url || '',
+              }
             }
-          } catch (e) {
+          } else {
+            // Use original data if no TMDB
             return {
               ...it,
               _tmdb: null,
@@ -91,7 +247,8 @@ const Search = () => {
           
           // Save to search history
           if (keyword.trim()) {
-            const newHistory = [keyword.trim(), ...searchHistory.filter(h => h !== keyword.trim())].slice(0, 5)
+            const currentHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]')
+            const newHistory = [keyword.trim(), ...currentHistory.filter(h => h !== keyword.trim())].slice(0, 5)
             setSearchHistory(newHistory)
             localStorage.setItem('searchHistory', JSON.stringify(newHistory))
           }
@@ -103,7 +260,7 @@ const Search = () => {
       }
     }
     
-    const timeoutId = setTimeout(run, 500) // Debounce search
+    const timeoutId = setTimeout(run, 800) // Debounce search - tăng thời gian để tránh gọi quá nhiều
     return () => { 
       cancelled = true
       clearTimeout(timeoutId)
@@ -119,13 +276,10 @@ const Search = () => {
     if (!movie?.slug) return
     
     try {
-      setDetailLoading(true)
       const detail = await fetchMovieDetailBySlug(movie.slug)
       setMovieDetail(detail)
     } catch (e) {
       console.error('Error fetching movie details:', e)
-    } finally {
-      setDetailLoading(false)
     }
   }
 
@@ -264,7 +418,18 @@ const Search = () => {
         
         {keyword && !loading && items.length === 0 && !error && (
           <div className='search-no-results'>
-            Không tìm thấy kết quả cho "{keyword}"
+            <div className='no-results-content'>
+              <h3>Không tìm thấy kết quả cho "{keyword}"</h3>
+              
+                
+            
+              {/* <button 
+                className='retry-search-btn'
+                onClick={clearCacheAndSearch}
+              >
+                🔄 Thử lại với cache mới
+              </button> */}
+            </div>
           </div>
         )}
         
@@ -288,12 +453,13 @@ const Search = () => {
                     loading='lazy' 
                   />
                   <div className='search-overlay'>
+                    <div className='search-meta'>
+                      <h3 className='search-title'>{movie?.name || movie?.origin_name || movie?._tmdb?.title || movie?._tmdb?.name}</h3>
+                      <p className='search-year'>{movie?.year || movie?._tmdb?.release_date?.split('-')[0]}</p>
+                      {movie?.quality && <span className='search-quality'>{movie.quality}</span>}
+                    </div>
                     <button className='search-play-btn'>▶</button>
                   </div>
-                </div>
-                <div className='search-meta'>
-                  <p className='search-title'>{movie?.name || movie?.origin_name || movie?._tmdb?.title}</p>
-                  <p className='search-year'>{movie?.year || movie?._tmdb?.release_date?.split('-')[0]}</p>
                 </div>
               </div>
             ))}
@@ -310,7 +476,22 @@ const Search = () => {
             >
               ← Trang trước
             </button>
-            <span className='pagination-info'>Trang {page}</span>
+            
+            <div className='page-numbers'>
+              {Array.from({length: Math.min(5, Math.ceil(items.length / 30))}, (_, i) => {
+                const pageNum = i + 1;
+                return (
+                  <button
+                    key={`page-${pageNum}`}
+                    className={`page-btn ${pageNum === page ? 'active' : ''}`}
+                    onClick={() => setPage(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            
             <button 
               onClick={() => setPage(p => p+1)}
               className='pagination-btn'
