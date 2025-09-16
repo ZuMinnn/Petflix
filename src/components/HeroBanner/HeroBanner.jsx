@@ -5,7 +5,7 @@ import play_icon from '../../assets/play_icon.png'
 import play_info from '../../assets/info_icon.png'
 import kms from '../../assets/kms.png' // Fallback image
 import TitleCards from '../TitleCards/TitleCards'
-import trailerVideo from '../../assets/4ktrailer.mp4'
+import trailerVideo from '../../assets/trailer2.mp4'
 
 
 const HeroBanner = ({ 
